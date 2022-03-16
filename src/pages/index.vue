@@ -18,70 +18,145 @@ const state = $ref(
         x,
         y,
         adjacentMines: 0,
+        revealod: false,
       }),
     ),
   ),
 )
 
-function generoteMines() {
+function generoteMines(initial: BlockState) {
   for (const row of state) {
-    for (const block of row)
+    for (const block of row) {
+      if (Math.abs(block.x - initial.x) <= 1)
+        continue
+      if (Math.abs(block.y - initial.y) <= 1)
+        continue
       block.mine = Math.random() < 0.2
+    }
   }
+  updateNumbers()
 }
 
 const directions = [
   [1, 1], [1, 0], [1, -1],
   [-1, 1], [-1, 0], [-1, -1],
-  [0, 1], [0, 1],
+  [0, 1], [0, -1],
+]
+
+const numberColors = [
+  'text-transparent',
+  'text-blue-500',
+  'text-green-500',
+  'text-yellow-500',
+  'text-orange-500',
+  'text-red-500',
+  'text-purple-500',
+  'text-pink-500',
+  'text-teal-500',
 ]
 
 function updateNumbers() {
   state.forEach((row, y) => {
     row.forEach((block, x) => {
-      if (block.mine) return
-      directions.forEach(([dx, dy]) => {
-        const x2 = x + dx
-        const y2 = y + dy
-        if (x2 < 0 || x2 >= WIDTH || y2 < 0 || y2 >= HEIGHT)
-          return
-        if (state[y2][x2].mine)
-          block.adjacentMines += 1
-      })
+      if (block.mine)
+        return
+      getSiblings(block)
+        .forEach((b) => {
+          if (b.mine)
+            block.adjacentMines += 1
+        })
     })
   })
 }
-// const onClick = (x: number, y: number) => {
-//   console.log(x, y)
-// }
+
+function expendZero(block: BlockState) {
+  if (block.adjacentMines)
+    return
+  getSiblings(block).forEach((s) => {
+    if (!s.revealod) {
+      s.revealod = true
+      expendZero(s)
+    }
+  })
+}
+
+let mineGenerated = false
+const dev = false
+
+function onRightClick(block: BlockState) {
+  if (block.revealod)
+    return
+  block.flagged = !block.flagged
+}
+
+function onClick(block: BlockState) {
+  if (!mineGenerated) {
+    generoteMines(block)
+    mineGenerated = true
+  }
+
+  block.revealod = true
+  if (block.mine)
+    alert('Game over')
+  expendZero(block)
+}
 
 function getBlockClass(block: BlockState) {
-  return block.mine ? 'text-red' : 'text-gray'
+  if (block.flagged)
+    return 'bg-gray-500/10'
+  if (!block.revealod)
+    return 'bg-gray-500/10 hover:bg-gray-500/20'
+  return block.mine
+    ? 'bg-red-500/50'
+    : numberColors[block.adjacentMines]
 }
-generoteMines()
-updateNumbers()
+
+function getSiblings(block: BlockState) {
+  return directions.map(([dx, dy]) => {
+    const x2 = block.x + dx
+    const y2 = block.y + dy
+    if (x2 < 0 || x2 >= WIDTH || y2 < 0 || y2 >= HEIGHT)
+      return undefined
+
+    return state[y2][x2]
+  })
+    .filter(Boolean) as BlockState[]
+}
+
 </script>
 
 <template>
   <div>
     Minesweeper
-    <div v-for="row,y in state" :key="y">
-      <button
-        v-for="item,x in row"
-        :key="x"
-        w-10 h-10
-        hover:bg-gray
-        border
-        :class="getBlockClass(item)"
-        @click="onClick(x, y)"
+    <div p5>
+      <div
+        v-for="row,y in state"
+        :key="y"
+        flex="~"
+        items-center justify-center
       >
-        <div v-if="item.mine">
-          💣
-        </div>
-        <div v-else>
-          {{ item.adjacentMines }}
-        </div>
-      </button>
+        <button
+          v-for="block,x in row"
+          :key="x"
+          flex="~"
+          items-center justify-center
+          w-10 h-10 m="0.5"
+          border="1 gray-400/10"
+          :class="getBlockClass(block)"
+          @click="onClick(block)"
+          @contextmenu.prevent="onRightClick(block)"
+        >
+          <template v-if="block.flagged">
+            <div i-mdi-flag text-red />
+          </template>
+          <template v-else-if="block.revealod || dev">
+            <div v-if="block.mine" i-mdi-mine />
+            <div v-else>
+              {{ block.adjacentMines }}
+            </div>
+          </template>
+        </button>
+      </div>
     </div>
   </div>
 </template>
