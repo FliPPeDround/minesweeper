@@ -11,6 +11,7 @@ interface GameState {
   board: BlockState[][]
   mineGenerated: boolean
   gameState: 'play' | 'won' | 'lost'
+  startMS: number
 }
 
 export class GamePlay {
@@ -32,8 +33,17 @@ export class GamePlay {
     this.reset()
   }
 
-  reset() {
+  reset(
+    width = this.width,
+    height = this.height,
+    mines = this.mines,
+  ) {
+    this.width = width
+    this.height = height
+    this.mines = mines
+
     this.state.value = {
+      startMS: +new Date(),
       mineGenerated: false,
       gameState: 'play',
       board: Array.from({ length: this.height }, (_, y) =>
@@ -62,9 +72,7 @@ export class GamePlay {
       const x = this.randomInt(0, this.width - 1)
       const y = this.randomInt(0, this.width - 1)
       const block = state[x][y]
-      if (Math.abs(block.x - initial.x) <= 1)
-        return false
-      if (Math.abs(block.y - initial.y) <= 1)
+      if (Math.abs(block.x - initial.x) <= 1 && Math.abs(block.y - initial.y) <= 1)
         return false
       if (block.mine)
         return false
@@ -152,7 +160,7 @@ export class GamePlay {
 
   checkGameState() {
     const blocks = this.board.flat()
-    if (blocks.every(block => block.revealod || (block.flagged && block.mine))) {
+    if (blocks.every(block => block.revealod || block.flagged || block.mine)) {
       if (blocks.some(block => block.flagged && !block.mine)) {
         this.state.value.gameState = 'lost'
         this.showAllMines()
