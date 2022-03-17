@@ -10,7 +10,7 @@ const directions = [
 interface GameState {
   board: BlockState[][]
   mineGenerated: boolean
-  gameState: 'play' | 'won' | 'lost'
+  gameState: 'ready' | 'play' | 'won' | 'lost'
   startMS: number
 }
 
@@ -45,7 +45,7 @@ export class GamePlay {
     this.state.value = {
       startMS: +new Date(),
       mineGenerated: false,
-      gameState: 'play',
+      gameState: 'ready',
       board: Array.from({ length: this.height }, (_, y) =>
         Array.from({ length: this.width },
           (_, x): BlockState => ({
@@ -123,6 +123,8 @@ export class GamePlay {
   }
 
   onClick(block: BlockState) {
+    if (this.state.value.gameState === 'ready')
+      this.state.value.gameState = 'play'
     if (this.state.value.gameState !== 'play')
       return
     if (!this.state.value.mineGenerated) {

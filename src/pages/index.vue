@@ -14,7 +14,7 @@ const timerMS = $computed(() => Math.round((+now - play.state.value.startMS) / 1
 const mineCount = $computed(() => {
   if (!play.state.value.mineGenerated)
     return play.mines
-  return play.blocks.reduce((a, b) => a + (b.mine ? 1 : 0) - (b.flagged ? 1 : 0), 0)
+  return play.blocks.reduce((a, b) => a - (b.flagged ? 1 : 0), play.mines)
 })
 
 function newGame(difficulty: 'easy' | 'medium' | 'hard') {
