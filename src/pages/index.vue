@@ -3,13 +3,13 @@
 import { GamePlay } from '~/composables/logic'
 import Confetti from '~/components/Confetti.vue'
 
-const play = new GamePlay(10, 10, 10)
+const play = new GamePlay(9, 9, 10)
 
 useStorage('mine-state', play.state)
 const state = $computed(() => play.board)
 
 const now = $(useNow())
-const timerMS = $computed(() => Math.round((+now - play.state.value.startMS) / 1000))
+const timerMS = $computed(() => Math.round(((play.state.value.endMS ?? +now) - (play.state.value.startMS ?? +now)) / 1000))
 
 const mineCount = $computed(() => {
   if (!play.state.value.mineGenerated)
@@ -26,7 +26,7 @@ function newGame(difficulty: 'easy' | 'medium' | 'hard') {
       play.reset(16, 16, 40)
       break
     case 'hard':
-      play.reset(16, 30, 99)
+      play.reset(30, 16, 99)
       break
   }
 }
@@ -88,9 +88,10 @@ watchEffect(() => {
           :block="block"
           @click="play.onClick(block)"
           @contextmenu.prevent="play.onRightClick(block)"
+          @dblclick="play.autoExpand(block)"
         />
       </div>
     </div>
   </div>
-  <Confetti :passed="play.state.value.gameState === 'won'" />
+  <Confetti :passed="play.state.value.status === 'won'" />
 </template>

@@ -7,11 +7,13 @@ const directions = [
   [0, 1], [0, -1],
 ]
 
+type Gamestatus = 'ready' | 'play' | 'won' | 'lost'
 interface GameState {
   board: BlockState[][]
   mineGenerated: boolean
-  gameState: 'ready' | 'play' | 'won' | 'lost'
-  startMS: number
+  status: Gamestatus
+  startMS?: number
+  endMS?: number
 }
 
 export class GamePlay {
@@ -43,9 +45,8 @@ export class GamePlay {
     this.mines = mines
 
     this.state.value = {
-      startMS: +new Date(),
       mineGenerated: false,
-      gameState: 'ready',
+      status: 'ready',
       board: Array.from({ length: this.height }, (_, y) =>
         Array.from({ length: this.width },
           (_, x): BlockState => ({
@@ -115,7 +116,7 @@ export class GamePlay {
   }
 
   onRightClick(block: BlockState) {
-    if (this.state.value.gameState !== 'play')
+    if (this.state.value.status !== 'play')
       return
     if (block.revealod)
       return
@@ -123,9 +124,11 @@ export class GamePlay {
   }
 
   onClick(block: BlockState) {
-    if (this.state.value.gameState === 'ready')
-      this.state.value.gameState = 'play'
-    if (this.state.value.gameState !== 'play')
+    if (this.state.value.status === 'ready') {
+      this.state.value.status = 'play'
+      this.state.value.startMS = +new Date()
+    }
+    if (this.state.value.status !== 'play')
       return
     if (!this.state.value.mineGenerated) {
       this.generoteMines(this.board, block)
@@ -134,8 +137,7 @@ export class GamePlay {
 
     block.revealod = true
     if (block.mine) {
-      this.state.value.gameState = 'lost'
-      this.showAllMines()
+      this.onGameOver('lost')
       return
     }
     this.expendZero(block)
@@ -163,13 +165,41 @@ export class GamePlay {
   checkGameState() {
     const blocks = this.board.flat()
     if (blocks.every(block => block.revealod || block.flagged || block.mine)) {
-      if (blocks.some(block => block.flagged && !block.mine)) {
-        this.state.value.gameState = 'lost'
-        this.showAllMines()
-      }
-      else {
-        this.state.value.gameState = 'won'
-      }
+      if (blocks.some(block => block.flagged && !block.mine))
+        this.onGameOver('lost')
+      else
+        this.onGameOver('won')
+    }
+  }
+
+  autoExpand(block: BlockState) {
+    const siblings = this.getSiblings(block)
+    const flags = siblings.reduce((a, b) => a + (b.flagged ? 1 : 0), 0)
+    const notRevealed = siblings.reduce((a, b) => a + (!b.revealod ? 1 : 0), 0)
+    if (flags === block.adjacentMines) {
+      siblings.forEach((block) => {
+        block.revealod = true
+        if (!block.flagged && block.mine)
+          this.onGameOver('lost')
+      })
+    }
+    const missingFlags = block.adjacentMines - flags
+    if (notRevealed === missingFlags) {
+      siblings.forEach((block) => {
+        if (!block.revealod && !block.flagged)
+          block.flagged = true
+      })
+    }
+  }
+
+  onGameOver(status: Gamestatus) {
+    this.state.value.status = status
+    this.state.value.endMS = +new Date()
+    if (status === 'lost') {
+      this.showAllMines()
+      setTimeout(() => {
+        alert('You Lost')
+      }, 10)
     }
   }
 }
